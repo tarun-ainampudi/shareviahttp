@@ -411,6 +411,15 @@ public class HttpServerConnection implements Runnable {
         StringBuilder output = new StringBuilder();
         output.append("HTTP/1.0 ");
         output.append(httpReturnCodeToString(return_code) + "\r\n");
+        if(fileUriZ.size() == 1){
+            output.append("Accept-Ranges: bytes\n");
+            try {
+                output.append("Content-Disposition: attachment; filename=\"" + theUriInterpretation.getName() + "\"; filename*=UTF-8''" + URLEncoder.encode(theUriInterpretation.getName(), "UTF-8") + "\n");
+            }
+            catch (UnsupportedEncodingException e){
+                s(Log.getStackTraceString(e));
+            }
+        }
         if (content_start != 0 && content_end != -1) {
             output.append("Content-Range: bytes " + Long.toString(content_start) + "-" + Long.toString(content_end) + "/" + Long.toString(theUriInterpretation.getSize()) + "\r\n");
             if (content_end > content_start)
