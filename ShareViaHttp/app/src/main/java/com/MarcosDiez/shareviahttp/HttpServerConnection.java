@@ -295,9 +295,11 @@ public class HttpServerConnection implements Runnable {
                     byte[] buffer = new byte[4096];
                     long sent = 0;
                     long rangeLength = (range_end - skipped) + 1;
-                    int n;
+                    Log.d("shareOneFile", "rangeLength : " + Long.toString(rangeLength));
+                    int n;//the total number of bytes read into the buffer, or -1 if there is no more data because the end of the file has been reached.
                     while (sent < rangeLength && (n = requestedfile.read(buffer)) != -1) {
                         if (sent + n > rangeLength) {
+                            Log.d("shareOneFile", "sent + n > rangeLength : sent=" + Long.toString(sent)+" n="+Integer.toString(n));
                             n = (int) (rangeLength - sent);
                         }
                         output.write(buffer, 0, n);
@@ -415,15 +417,13 @@ public class HttpServerConnection implements Runnable {
             output.append("Accept-Ranges: bytes\n");
             try {
                 output.append("Content-Disposition: attachment; filename=\"" + theUriInterpretation.getName() + "\"; filename*=UTF-8''" + URLEncoder.encode(theUriInterpretation.getName(), "UTF-8") + "\n");
+                output.append("Content-Range: bytes " + Long.toString(content_start) + "-" + Long.toString(content_end) + "/" + Long.toString(theUriInterpretation.getSize()) + "\r\n");
+                if (content_end > content_start)
+                    output.append("Content-Length: " + Long.toString(content_end - content_start + 1) + "\r\n");
             }
             catch (UnsupportedEncodingException e){
                 s(Log.getStackTraceString(e));
             }
-        }
-        if (content_start != 0 && content_end != -1) {
-            output.append("Content-Range: bytes " + Long.toString(content_start) + "-" + Long.toString(content_end) + "/" + Long.toString(theUriInterpretation.getSize()) + "\r\n");
-            if (content_end > content_start)
-                output.append("Content-Length: " + Long.toString(content_end - content_start + 1) + "\r\n");
         } else output.append(getFileSizeHeader());
         SimpleDateFormat format = new SimpleDateFormat(
                 "EEE, dd MMM yyyy HH:mm:ss zzz");
