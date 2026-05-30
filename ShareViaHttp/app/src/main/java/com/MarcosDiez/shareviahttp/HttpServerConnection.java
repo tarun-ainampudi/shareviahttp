@@ -389,13 +389,21 @@ public class HttpServerConnection implements Runnable {
     }
 
     // it is not always possible to get the file size :(
-    private String getFileSizeHeader() {
+    private String getFileSizeHeader(int return_code,long content_start,long content_end) {
         if (theUriInterpretation == null) {
             return "";
         }
-        if (fileUriZ.size() == 1 && theUriInterpretation.getSize() > 0) {
-            return "Content-Length: "
+        if ((return_code == 200 || return_code == 206) && fileUriZ.size() == 1) {
+            if(return_code == 206 && content_end >= content_start){
+                String lengthHeader = "Content-Length: " + Long.toString(content_end - content_start + 1) + "\r\n";
+                String rangeHeader = "Content-Range: bytes " + Long.toString(content_start) + "-" + Long.toString(content_end) + "/" + Long.toString(theUriInterpretation.getSize()) + "\r\n";
+                return rangeHeader + lengthHeader;
+            }
+            else if(theUriInterpretation.getSize() > 0)
+                return "Content-Length: "
                     + Long.toString(theUriInterpretation.getSize()) + "\r\n";
+            else
+                return "";
         }
         return "";
     }
@@ -413,18 +421,16 @@ public class HttpServerConnection implements Runnable {
         StringBuilder output = new StringBuilder();
         output.append("HTTP/1.0 ");
         output.append(httpReturnCodeToString(return_code) + "\r\n");
-        if(fileUriZ.size() == 1){
-            output.append("Accept-Ranges: bytes\n");
+        if((return_code == 200 || return_code == 206) && fileUriZ.size() == 1){
+            output.append("Accept-Ranges: bytes\r\n");
             try {
-                output.append("Content-Disposition: attachment; filename=\"" + theUriInterpretation.getName() + "\"; filename*=UTF-8''" + URLEncoder.encode(theUriInterpretation.getName(), "UTF-8") + "\n");
-                output.append("Content-Range: bytes " + Long.toString(content_start) + "-" + Long.toString(content_end) + "/" + Long.toString(theUriInterpretation.getSize()) + "\r\n");
-                if (content_end > content_start)
-                    output.append("Content-Length: " + Long.toString(content_end - content_start + 1) + "\r\n");
+                output.append("Content-Disposition: attachment; filename=\"" + theUriInterpretation.getName() + "\"; filename*=UTF-8''" + URLEncoder.encode(theUriInterpretation.getName(), "UTF-8") + "\r\n");
             }
             catch (UnsupportedEncodingException e){
                 s(Log.getStackTraceString(e));
             }
-        } else output.append(getFileSizeHeader());
+        }
+        output.append(getFileSizeHeader(return_code,content_start, content_end));
         SimpleDateFormat format = new SimpleDateFormat(
                 "EEE, dd MMM yyyy HH:mm:ss zzz");
 
